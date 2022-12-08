@@ -378,6 +378,7 @@ def make_stats(df_nucleos, df_cyto, df_nucleos_full, df_cyto_full, n_efd_coeffs=
    df = pd.DataFrame(data)
    return (count_cells, df)  
 
+ #Funções para normalizar (todos os dados):
 ## Normaliza dados
 def normalize(min, max, value):
     return (value-min)/(max - min)
@@ -387,7 +388,7 @@ def normalize_prop(prop, df):
     max = np.max(df[prop].values)
     return (normalize(min, max, df[prop].values))
 
-# Filtra/normaliza dados
+# Filtra/Normaliza dados
 def normalize_dataset(df, n_efd_coeffs):
   dataset = df.copy()
    
@@ -436,5 +437,4 @@ def normalize_dataset(df, n_efd_coeffs):
       dataset[efd] = normalize_prop(efd, df)   
 
   #dataset.nucleus_position = normalize_prop('nucleus_position', df)
- 
-  return dataset        
+  return dataset

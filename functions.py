@@ -43,66 +43,6 @@ from random import sample
 
 import xgboost as xgb 
 
-#Funções para normalizar (todos os dados):
-## Normaliza dados
-def normalize(min, max, value):
-    return (value-min)/(max - min)
-
-def normalize_prop(prop, df):
-    min = np.min(df[prop].values)
-    max = np.max(df[prop].values)
-    return (normalize(min, max, df[prop].values))
-
-# Filtra/Normaliza dados
-def normalize_dataset(df, n_efd_coeffs):
-  dataset = df.copy()
-   
-  dataset.areaN = normalize_prop('areaN', df)
-  dataset.eccenN = normalize_prop('eccenN', df) 
-  dataset.extentN = normalize_prop('extentN', df)
-  dataset.periN = normalize_prop('periN', df)
-  dataset.maxAxN = normalize_prop('maxAxN', df)  
-  dataset.minAxN = normalize_prop('minAxN', df)  
-  dataset.compacN = normalize_prop('compacN', df)
-  dataset.circuN = normalize_prop('circuN', df)
-  dataset.convexN = normalize_prop('convexN', df)
-  dataset.hAreaN = normalize_prop('hAreaN', df)
-  dataset.solidN = normalize_prop('solidN', df) 
-  dataset.equidiaN = normalize_prop('equidiaN', df) 
-  dataset.elonN = normalize_prop('elonN', df)
-  dataset.eN = normalize_prop('eN', df)  
-  dataset.kN = normalize_prop('kN', df)  
-  dataset.mrdN = normalize_prop('mrdN', df)  
-  dataset.ardN = normalize_prop('ardN', df)  
-  dataset.fdN = normalize_prop('fdN', df)       
-  efds = ['efdN'+str(i) for i in range(1,(n_efd_coeffs*4 + 1 - 3))]
-  for efd in efds: 
-      dataset[efd] = normalize_prop(efd, df) 
-    
-  dataset.areaC = normalize_prop('areaC', df)
-  dataset.eccenC = normalize_prop('eccenC', df) 
-  dataset.extentC = normalize_prop('extentC', df)
-  dataset.periC = normalize_prop('periC', df)
-  dataset.maxAxC = normalize_prop('maxAxC', df)  
-  dataset.minAxC = normalize_prop('minAxC', df)
-  dataset.compacC = normalize_prop('compacC', df)
-  dataset.circuC = normalize_prop('circuC', df)
-  dataset.convexC = normalize_prop('convexC', df)
-  dataset.hAreaC = normalize_prop('hAreaC', df)
-  dataset.solidC = normalize_prop('solidC', df) 
-  dataset.equidiaC = normalize_prop('equidiaC', df) 
-  dataset.elonC = normalize_prop('elonC', df)
-  dataset.eC = normalize_prop('eC', df)  
-  dataset.kC = normalize_prop('kC', df)  
-  dataset.mrdC = normalize_prop('mrdC', df)  
-  dataset.ardC = normalize_prop('ardC', df)  
-  dataset.fdC = normalize_prop('fdC', df)       
-  efds = ['efdC'+str(i) for i in range(1,(n_efd_coeffs*4 + 1 - 3))]
-  for efd in efds: 
-      dataset[efd] = normalize_prop(efd, df)   
-
-  #dataset.nucleus_position = normalize_prop('nucleus_position', df)
-  return dataset
 
 #Funções - organiza dados (x, y, ids) e target para diferentes classificadores:
 #Monta base e retorna 3 dataframes: data (x), target(2,3 e 6 classes), image/cell_id
@@ -196,7 +136,7 @@ def filter_Xy_from_cls1_to_cls3(data, target, predics_ter, idx_test):
 def filter_Xy_from_cls2_to_cls4(data, target, predics_ter, idx_test):
     lines = []
     for i in idx_test:
-        if predics_ter[i] == 2:  #lesão de baixo grau
+        if predics_ter[i] == 2:  #lesão de alto grau
              lines.append(i)
             
     X = data.loc[lines]
@@ -299,7 +239,7 @@ def list_all_cyto_features(n_efd_coeffs):
 # Fonte: An implementation of feature selection and ranking via SPSA based on the article "K-best feature selection and ranking via stochastic approximation"(https://www.sciencedirect.com/science/article/abs/pii/S0957417422018826) 
 # Código: https://github.com/akmand/spFSR.git
 def features_selection_spfsr(X_train, y_train, N_features = None):        
-    #Atenção: X_train contem apenas colunas de features!
+    #Atenção: X_train contem apenas colunas de features (com todas elas, obviamente)!
     
     # pred_type needs to be 'c' for classification and 'r' for regression datasets
     sp_engine = SpFSR(x=X_train.values, y=y_train.values, pred_type='c', wrapper=None, scoring='accuracy')
@@ -375,48 +315,6 @@ def resume_feature_importance(acum_dict, N_iter, N_features = None):
     feature_importances = np.asarray(feature_importances, dtype = np.float32)    
     return (best_features, feature_importances)
     
-#Funções tuning/gridsearch (SVM, RF, XGBoost)
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.metrics import classification_report
-
-def grid_search_SVM(model, params, X, y):
-    grid_search = GridSearchCV(
-        model, params, scoring= ['accuracy', 'f1_weighted'], refit='f1_weighted'
-    )
-    grid_search.fit(X, y)
-    y_pred = grid_search.predict(X)
-    print(classification_report(y, y_pred))
-    return (grid_search.best_params_)
-
-def grid_search_RF(model, params, X, y):
-    grid_search = GridSearchCV(model, param_grid = params, 
-        scoring= 'accuracy')
-    grid_search.fit(X, y)
-    y_pred = grid_search.predict(X)
-    print(classification_report(y, y_pred))
-    return (grid_search.best_params_)
-
-def grid_search_XGB(model, params, X, y):
-    folds = 5
-    param_comb = 150
-    skf = StratifiedKFold(n_splits=folds, shuffle = True, random_state = 1001)
-    
-    random_search = RandomizedSearchCV(model, param_distributions= params,
-                        n_iter=param_comb, scoring='accuracy', n_jobs=-1, 
-                        cv=skf.split(X,y), random_state=1001)
-
-    start_time = timer(None) # Tempo inicial
-    random_search.fit(X, y)
-    timer(start_time)
-    
-    print('\n Best estimator:')
-    print(random_search.best_estimator_)
-    print('\n Best score for %d-fold search with %d parameter combinations:' % (folds, param_comb))
-    print(random_search.best_score_ )
-    results = pd.DataFrame(random_search.cv_results_) 
-    
-    return random_search.best_params_, results
-    
 
 #Funções para classificadores e métricas:
 # Gera modelos 
@@ -427,11 +325,9 @@ def getModel(params, classifier = 'SVM', class_type = 'binary'):
           model = RandomForestClassifier(oob_score=True, random_state=27).set_params(**params)
     elif classifier == 'XGBoost':
         if class_type == 'binary':
-            model = xgb.XGBClassifier(learning_rate=0.2, n_estimators=200, objective= 'binary:logistic',
-                     scale_pos_weight=1, seed=27).set_params(**params)
+            model = xgb.XGBClassifier(objective= 'binary:logistic',seed=27).set_params(**params)
         else:    # multiclass  
-            model = xgb.XGBClassifier(learning_rate=0.2, n_estimators=200, objective= 'multi:softprob',
-                     seed=27).set_params(**params) 
+            model = xgb.XGBClassifier(objective= 'multi:softprob', seed=27).set_params(**params) 
     else:
         model = None # 'MLP toDo'    
     return model    
