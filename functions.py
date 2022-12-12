@@ -190,6 +190,35 @@ def list_all_features(n_efd_coeffs):
        feature_labels.append(name_f)
    return feature_labels   
 
+def list_all_features_without_EFD():   
+   feature_labels=['areaN', 'eccenN', 'extentN', 'periN', 'maxAxN', 'minAxN',
+                   'compacN', 'circuN', 'convexN', 'hAreaN', 'solidN', 'equidiaN', 
+                   'elonN', 'sdnrlN', 'raN', 'riN', 'eN', 'kN', 'mrdN', 'ardN', 'fdN'] 
+   
+   aux=['areaC', 'eccenC', 'extentC', 'periC', 'maxAxC', 'minAxC',
+         'compacC', 'circuC', 'convexC', 'hAreaC', 'solidC', 'equidiaC', 
+          'elonC', 'sdnrlC', 'raC', 'riC', 'eC', 'kC', 'mrdC', 'ardC', 'fdC'] 
+   for name_f in aux:
+       feature_labels.append(name_f)
+  
+   aux = ['ratio_NC', 'ratio_NC_per', 'ratio_NC_hArea', 'nucleus_position']
+
+   for name_f in aux:
+       feature_labels.append(name_f)
+   return feature_labels   
+
+def list_all_nucleus_without_EFD():   
+   feature_labels=['areaN', 'eccenN', 'extentN', 'periN', 'maxAxN', 'minAxN',
+                   'compacN', 'circuN', 'convexN', 'hAreaN', 'solidN', 'equidiaN', 
+                   'elonN', 'sdnrlN', 'raN', 'riN', 'eN', 'kN', 'mrdN', 'ardN', 'fdN'] 
+   return feature_labels   
+
+def list_all_cyto_without_EFD():   
+   feature_labels=['areaC', 'eccenC', 'extentC', 'periC', 'maxAxC', 'minAxC',
+                   'compacC', 'circuC', 'convexC', 'hAreaC', 'solidC', 'equidiaC', 
+                   'elonC', 'sdnrlC', 'raC', 'riC', 'eC', 'kC', 'mrdC', 'ardC', 'fdC'] 
+   return feature_labels   
+
 def list_all_EFD_features(n_efd_coeffs):
    # n_efd_coeffs: número de coefficientes a considerar (série Eliptica de fourier - EFD) para N e C
 
@@ -198,6 +227,19 @@ def list_all_EFD_features(n_efd_coeffs):
    for name_f in efdCs:
        feature_labels.append(name_f)
    return feature_labels   
+
+def list_all_nucleus_EFD_features(n_efd_coeffs):
+   # n_efd_coeffs: número de coefficientes a considerar (série Eliptica de fourier - EFD) para N e C
+
+   feature_labels = ['efdN'+str(i) for i in range(1, (n_efd_coeffs*4+1 - 3))]      
+   return feature_labels   
+
+def list_all_cyto_EFD_features(n_efd_coeffs):
+   # n_efd_coeffs: número de coefficientes a considerar (série Eliptica de fourier - EFD) para N e C
+
+   feature_labels = ['efdC'+str(i) for i in range(1, (n_efd_coeffs*4+1 - 3))]      
+   return feature_labels   
+
 
 
 def list_all_nucleus_features(n_efd_coeffs):
@@ -334,68 +376,44 @@ def getModel(params, classifier = 'SVM', class_type = 'binary'):
     
  
 ## Ajusta modelos com Cross validation nos dados de treino com aumento de dados em cada fold (retorna métrica de treino)
-def fit_model(X, y, model, cls_type= 1, cv=None):
+def fit_model(X, y, model, cls_type= 1, smote=0):
     """
-    Faz upsamples dos dados de teste
-    Returns array de métricas de treino
+    Faz upsamples dos dados de teste e model fitted
     """
     le = preprocessing.LabelEncoder()
-    if cls_type == 1:  ## normal/anormal
-            cls = [0,1]
-            class_type = 'binary'
-            label = 1
+    if cls_type == 1:  ## normal/anormal (ou não hierárquico)
+            cls = None
     elif cls_type == 2:   ## baixo/alto grau
             cls = [1,2]
             le.fit(cls)
-            class_type = 'binary'
-            label = 2
     elif cls_type == 3:  ## asc-us/lsil
             cls = [1,3]
             le.fit(cls)
-            class_type = 'binary'
-            label = 3
-    else:              ## asch/hsil/car
+    elif cls_type == 4:   ## asch/hsil/car
             cls = [2,4,5]
             le.fit(cls)
-            label= None
-            class_type = 'ternary'
- 
-    smoter = SMOTE(random_state=42)
-    accs = precs = recs = specs = f1_scores = aucs = 0 
-     
+       
+    if smote == 0:
+        smoter = SMOTE(random_state=42)
+    else:    
+        smoter = BorderlineSMOTE(random_state=42)
+            
     # Upsample apenas nos dados de treinamento
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=45)
-    #X_train, y_train = X,y
+    X_train, y_train = X,y
     X_train_upsample, y_train_upsample = smoter.fit_resample(X_train, y_train)
     
     ## codifica rótulos em y se classificadores 2, 3 e 4
     if (cls_type != 1):  
         y_train_upsample = le.transform(y_train_upsample.astype(np.int32))
-    else:
+    else:  ## não é necessário codificar rótulos
         y_train_upsample = y_train_upsample.astype(np.int32)
             
     model = model.fit(X_train_upsample, y_train_upsample)            
 
-    # Predição:
-    pred_y = model.predict(X_val)
-     
-    ## decodifica rótulos em y se classificadores tipos 2, 3 e 4:
-    if (cls_type!= 1):
-        pred_y = le.inverse_transform(pred_y)
-
-    # Calcula e registra métricas p/ fold:
-    accs = calc_metric(y_val, pred_y, metric_type='acc', class_type = class_type, pos_label= label, classes=cls)
-    precs = calc_metric(y_val, pred_y, metric_type='prec', class_type = class_type, pos_label= label, classes=cls)
-    recs = calc_metric(y_val, pred_y, metric_type='rec', class_type = class_type, pos_label= label, classes=cls)
-    specs = calc_metric(y_val, pred_y, metric_type='spec', class_type = class_type, pos_label= label, classes=cls)
-    f1_scores = calc_metric(y_val, pred_y, metric_type='f1_score', class_type = class_type, pos_label= label, classes=cls)
-       
-    ## Registra resultados (dataframe):
-    metrics = {'acc': accs, 'prec': precs, 'rec': recs, 'spec': specs, 'f1_score': f1_scores}      
-    return metrics, model
+    return None, model
 
 ## Ajusta modelos com Cross validation nos dados de treino com aumento de dados em cada fold (retorna métrica de treino)
-def fit_model_old(X, y, model, cls_type= 1, cv=None):
+def fit_model_old(X, y, model, cls_type= 1, cv=None, smote=1):
     """
     Cria folds e upsamples dentro de cada fold.
     Returns array de métricas de validação
@@ -424,8 +442,12 @@ def fit_model_old(X, y, model, cls_type= 1, cv=None):
     N_SPLITS = 5
     if cv is None:
         cv = StratifiedKFold(n_splits=N_SPLITS, random_state=None)
-
-    smoter = BorderlineSMOTE(random_state=42)
+    
+    if smote == 0:
+        smoter = SMOTE(random_state=42)
+    else:    
+        smoter = BorderlineSMOTE(random_state=42)
+        
     accs = precs = recs = specs = f1_scores = aucs = np.zeros((N_SPLITS), dtype = np.float64)
     for i, (train_fold_index, val_fold_index) in enumerate(cv.split(X, y)):
  
@@ -554,3 +576,14 @@ def plot_conf_matrix(preds_to_conf_matrix, lbls=[0,1], disp_lbls=['normal', 'ano
           ax.title.set_text(preds_to_conf_matrix[i][2])
     plt.tight_layout()  
     plt.show()
+    
+## Retorna indice das confusões em predições (alg: SVM(0), RF(1), XGB(2))
+def get_index_erros_bethesda(y_preds, y_true, alg=2, cls=2, cls_conf=4):
+    filter = y_true['bethesda'] == cls
+    idx_target = y_true['bethesda'].loc[filter].index
+    idx_result = []
+    for i in idx_target:
+        if y_preds[i, alg] == cls_conf:
+            idx_result.append(i)
+    
+    return  idx_result
