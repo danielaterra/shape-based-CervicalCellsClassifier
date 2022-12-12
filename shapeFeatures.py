@@ -23,6 +23,7 @@ class CRIC_images:
     def __init__(self):
         self.IMG_W = 1376
         self.IMG_H = 1020
+        self.Bethesda_classes = {'Normal':0, 'ASC-US':1, 'ASC-H':2, 'LSIL':3,'HSIL':4, 'Invasive Carcinoma':5} 
 
 # Monta dataframe de features por célula (núcleo e citoplasma):
 def list_cells(nucleos_csv, cyto_csv): 
@@ -237,6 +238,8 @@ def make_stats(df_nucleos, df_cyto, df_nucleos_full, df_cyto_full, n_efd_coeffs=
      Features relação N/C: razão area N/C, razão perimetro N/C,razão area convex hull N/C, posição relativa do nucleo
      
    """ 
+   img = CRIC_images()
+ 
    count_cells = np.zeros(6, dtype = int)
     
    data = create_dictionary_features(n_efd_coeffs)
@@ -245,12 +248,12 @@ def make_stats(df_nucleos, df_cyto, df_nucleos_full, df_cyto_full, n_efd_coeffs=
         
         points_nucleos = df_nucleos_full.query('image_id == '+str(image_id) + ' and cell_id == '+str(cell_id))[['x', 'y']].values
         points_cyto = df_cyto_full.query('image_id == '+str(image_id) + ' and cell_id == '+str(cell_id))[['x', 'y']].values
-        bethesda = Bethesda_classes[df_nucleos_full.query('image_id == '+str(image_id) + ' and cell_id == '+str(cell_id))['bethesda_system'].values[0]]
+        bethesda = img.Bethesda_classes[df_nucleos_full.query('image_id == '+str(image_id) + ' and cell_id == '+str(cell_id))['bethesda_system'].values[0]]
                 
         # Nucleos mask
-        mask_nucleo =  np.zeros((IMG_H, IMG_W), dtype=np.uint8)
+        mask_nucleo =  np.zeros((img.IMG_H, img.IMG_W), dtype=np.uint8)
         # Cytoplasma mask
-        mask_cyto =  np.zeros((IMG_H, IMG_W), dtype=np.uint8)
+        mask_cyto =  np.zeros((img.IMG_H, img.IMG_W), dtype=np.uint8)
         
         # Nucleos contour points
         rrN, ccN = polygon(points_nucleos[:,1], points_nucleos[:,0])
