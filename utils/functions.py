@@ -578,12 +578,15 @@ def plot_conf_matrix(preds_to_conf_matrix, lbls=[0,1], disp_lbls=['normal', 'ano
     plt.show()
     
 ## Retorna indice das confusões em predições (alg: SVM(0), RF(1), XGB(2))
-def get_index_erros_bethesda(y_preds, y_true, alg=2, cls=2, cls_conf=4):
+def get_index_erros_bethesda(y_preds, y_true, alg=-1, cls=2, cls_conf=4):
     filter = y_true['bethesda'] == cls
     idx_target = y_true['bethesda'].loc[filter].index
     idx_result = []
     for i in idx_target:
-        if y_preds[i, alg] == cls_conf:
+        if alg==-1:
+            if y_preds[i] == cls_conf:
+               idx_result.append(i)
+        elif y_preds[i, alg] == cls_conf:
             idx_result.append(i)
-    
+        
     return  idx_result
